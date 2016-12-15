@@ -38,6 +38,9 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
 
     private List<List<String>> mdatas;
 
+    //tablayout的可变tab集合
+    private List<TabLayout.Tab> mTabs = new ArrayList<>();
+
     public AddressPickView(Activity activity) {
         this.mActivity = activity;
         if (height == 0) {
@@ -100,9 +103,14 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         mTvConfirm.setOnClickListener(this);
         mTbSelector.setOnTabSelectedListener(this);
         mVpContent.setAdapter(new AddressPickAdapter(mActivity.getApplicationContext(), mdatas));
-        mTbSelector.addTab(mTbSelector.newTab().setText("tab1"));
-        mTbSelector.addTab(mTbSelector.newTab().setText("tab2"));
-        mTbSelector.addTab(mTbSelector.newTab().setText("tab3"));
+        mTabs.add( mTbSelector.newTab().setText("请选择"));
+        initTab();
+    }
+
+    private void initTab() {
+        for (TabLayout.Tab tab : mTabs) {
+            mTbSelector.addTab(tab);
+        }
     }
 
     public void show(View view) {
