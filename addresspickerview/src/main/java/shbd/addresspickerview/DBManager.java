@@ -22,7 +22,7 @@ import java.io.InputStream;
  */
 public class DBManager {
     private final int BUFFER_SIZE = 400000;
-    public static final String DB_NAME = "countries.db"; //保存的数据库文件名
+    public static final String DB_NAME = "city.db"; //保存的数据库文件名
     public static final String PACKAGE_NAME = "shbd.addressselect";
     public static final String DB_PATH = "/data"
             + Environment.getDataDirectory().getAbsolutePath() + "/"

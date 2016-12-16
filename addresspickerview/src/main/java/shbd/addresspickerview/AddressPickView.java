@@ -2,6 +2,8 @@ package shbd.addresspickerview;
 
 import android.app.Activity;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.drawable.ColorDrawable;
 import android.support.design.widget.TabLayout;
 import android.util.DisplayMetrics;
@@ -80,7 +82,8 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
 /*
 
     */
-/**
+
+    /**
      * 创建本地数据库
      */
 
@@ -88,10 +91,11 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         DBManager dbHelper = new DBManager(mActivity);
         dbHelper.openDatabase();
         dbHelper.closeDatabase();
-      /*  try {
+        mProvinceData = queryDataFromLocal("select distinct(shortname) from city where level=1", "shortname");
+       /* try {
             dbHelper.createDataBase();
             mDataBase = dbHelper.getWritableDatabase();
-            mProvinceData = queryDataFromLocal("select distinct(shortname) from city where level=1", "shortname");
+            mProvinceData =
             //查询出所有省 select distinct(shortname) from city where level=1
             //查询出对应市 select * from city where pid in(select distinct(id) from city where shortname='湖南' and level=1);
             //查询出对应区  select distinct(name) from city where pid= (select distinct(id) from city where shortname ='北京' and level=2)
@@ -100,21 +104,19 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
             e.printStackTrace();
         }*/
     }
-/*
 
     private List<String> queryDataFromLocal(String statement, String column) {
+        SQLiteDatabase database = SQLiteDatabase.openOrCreateDatabase(DBManager.DB_PATH + "/" + DBManager.DB_NAME, null);
         List<String> datas = new ArrayList<>();
-        Cursor cursor = mDataBase.rawQuery(statement, null);
+        Cursor cursor = database.rawQuery(statement, null);
         while (cursor.moveToNext()) {
             datas.add(cursor.getString(cursor.getColumnIndex(column)));
         }
+        database.close();
         return datas;
     }
-*/
 
     private void initView() {
-
-
         mTvCancel = (TextView) mView.findViewById(R.id.tv_cancel);
         mTvConfirm = (TextView) mView.findViewById(R.id.tv_confirm);
         mVpContent = (NoScrollViewPager) mView.findViewById(R.id.vp_content);
