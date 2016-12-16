@@ -24,10 +24,14 @@ public class AddressPickAdapter extends PagerAdapter {
 
     private List<List<String>> mDatas;
 
-    public AddressPickAdapter(Context context, List<List<String>> datas) {
+    private OnAddressPickItemClickListener mListener;
+
+    public AddressPickAdapter(Context context, List<List<String>> datas, OnAddressPickItemClickListener listener) {
         this.mContext = context;
         this.mDatas = datas;
+        this.mListener = listener;
     }
+
 
     @Override
     public int getCount() {
@@ -43,13 +47,16 @@ public class AddressPickAdapter extends PagerAdapter {
     public Object instantiateItem(ViewGroup container, int position) {
         View view = LayoutInflater.from(mContext).inflate(R.layout.fragment1, container, false);
         ListView listView = (ListView) view.findViewById(R.id.listview);
+        final int currentPosition = position;
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
+                if (mListener != null) {
+                    mListener.onItemClick(currentPosition, mDatas.get(currentPosition).get(position));
+                }
             }
         });
-        listView.setAdapter(new CityDataAdapter(mContext, mDatas.get(position)));
+        listView.setAdapter(new DataAdapter(mContext, mDatas.get(position)));
         container.addView(view);
         return view;
     }
@@ -58,4 +65,9 @@ public class AddressPickAdapter extends PagerAdapter {
     public void destroyItem(ViewGroup container, int position, Object object) {
         container.removeView((View) object);
     }
+
+    public interface OnAddressPickItemClickListener {
+        void onItemClick(int position, String data);
+    }
+
 }

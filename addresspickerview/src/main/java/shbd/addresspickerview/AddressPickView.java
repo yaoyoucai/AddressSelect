@@ -25,7 +25,7 @@ import java.util.List;
  * 修改时间：2016/12/15 10:27
  * 修改备注：
  */
-public class AddressPickView extends PopupWindow implements PopupWindow.OnDismissListener, View.OnClickListener, TabLayout.OnTabSelectedListener {
+public class AddressPickView extends PopupWindow implements PopupWindow.OnDismissListener, View.OnClickListener, TabLayout.OnTabSelectedListener, AddressPickAdapter.OnAddressPickItemClickListener {
     private TextView mTvCancel;
     private TextView mTvConfirm;
     private NoScrollViewPager mVpContent;
@@ -38,8 +38,9 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
 
     private List<List<String>> mdatas;
 
-    //tablayout的可变tab集合
-    private List<TabLayout.Tab> mTabs = new ArrayList<>();
+    List<String> mProvinceData = new ArrayList<>();
+    List<String> mCityData = new ArrayList<>();
+    List<String> mDistrictData = new ArrayList<>();
 
     public AddressPickView(Activity activity) {
         this.mActivity = activity;
@@ -69,27 +70,47 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
     }
 
     private void initData() {
+        createLocalDataBase();
         mdatas = new ArrayList<>();
-        List<String> mProvinceData = new ArrayList<>();
-        mProvinceData.add("province1");
-        mProvinceData.add("province2");
-        mProvinceData.add("province3");
-
-        List<String> mCityData = new ArrayList<>();
-        mCityData.add("city1");
-        mCityData.add("city2");
-        mCityData.add("city3");
-
-        List<String> mDistrictData = new ArrayList<>();
-        mDistrictData.add("district1");
-        mDistrictData.add("district2");
-        mDistrictData.add("district3");
-
         mdatas.add(mProvinceData);
         mdatas.add(mCityData);
         mdatas.add(mDistrictData);
 
     }
+/*
+
+    */
+/**
+     * 创建本地数据库
+     */
+
+    private void createLocalDataBase() {
+        DBManager dbHelper = new DBManager(mActivity);
+        dbHelper.openDatabase();
+        dbHelper.closeDatabase();
+      /*  try {
+            dbHelper.createDataBase();
+            mDataBase = dbHelper.getWritableDatabase();
+            mProvinceData = queryDataFromLocal("select distinct(shortname) from city where level=1", "shortname");
+            //查询出所有省 select distinct(shortname) from city where level=1
+            //查询出对应市 select * from city where pid in(select distinct(id) from city where shortname='湖南' and level=1);
+            //查询出对应区  select distinct(name) from city where pid= (select distinct(id) from city where shortname ='北京' and level=2)
+            //查询出对应邮编 select  distinct(zip_code) from city where name ='赫山区' and level=3;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
+    }
+/*
+
+    private List<String> queryDataFromLocal(String statement, String column) {
+        List<String> datas = new ArrayList<>();
+        Cursor cursor = mDataBase.rawQuery(statement, null);
+        while (cursor.moveToNext()) {
+            datas.add(cursor.getString(cursor.getColumnIndex(column)));
+        }
+        return datas;
+    }
+*/
 
     private void initView() {
 
@@ -102,16 +123,10 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         mTvCancel.setOnClickListener(this);
         mTvConfirm.setOnClickListener(this);
         mTbSelector.setOnTabSelectedListener(this);
-        mVpContent.setAdapter(new AddressPickAdapter(mActivity.getApplicationContext(), mdatas));
-        mTabs.add( mTbSelector.newTab().setText("请选择"));
-        initTab();
+        mVpContent.setAdapter(new AddressPickAdapter(mActivity.getApplicationContext(), mdatas, this));
+        mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
     }
 
-    private void initTab() {
-        for (TabLayout.Tab tab : mTabs) {
-            mTbSelector.addTab(tab);
-        }
-    }
 
     public void show(View view) {
         WindowManager.LayoutParams lp = mActivity.getWindow().getAttributes();
@@ -169,4 +184,36 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
     public void onTabReselected(TabLayout.Tab tab) {
 
     }
+
+    @Override
+    public void onItemClick(int position, String data) {
+        mTbSelector.removeAllTabs();
+        switch (position) {
+            case 0:
+                firsrt = data;
+                mTbSelector.addTab(mTbSelector.newTab().setText(firsrt));
+                mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
+                mTbSelector.getTabAt(1).select();
+                break;
+            case 1:
+                second = data;
+                mTbSelector.addTab(mTbSelector.newTab().setText(firsrt));
+                mTbSelector.addTab(mTbSelector.newTab().setText(second));
+                mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
+                mTbSelector.getTabAt(2).select();
+                break;
+            case 2:
+                third = data;
+                mTbSelector.addTab(mTbSelector.newTab().setText(firsrt));
+                mTbSelector.addTab(mTbSelector.newTab().setText(second));
+                mTbSelector.addTab(mTbSelector.newTab().setText(third));
+                mTbSelector.getTabAt(2).select();
+                break;
+        }
+//        Toast.makeText(mActivity, "currentPosition:" + position + ",data:" + data, Toast.LENGTH_SHORT).show();
+    }
+
+    private String firsrt;
+    private String second;
+    private String third;
 }

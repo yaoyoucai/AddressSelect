@@ -7,8 +7,10 @@ import android.widget.TextView;
 
 import shbd.addresspickerview.AddressPickView;
 
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private TextView mTextView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

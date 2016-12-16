@@ -18,12 +18,12 @@ import java.util.List;
  * 修改时间：2016/12/15 17:26
  * 修改备注：
  */
-public class CityDataAdapter extends BaseAdapter {
+public class DataAdapter extends BaseAdapter {
     private Context mContext;
     private List<String> mDatas;
     private LayoutInflater mInflater;
 
-    public CityDataAdapter(Context context, List<String> datas) {
+    public DataAdapter(Context context, List<String> datas) {
         this.mContext = context;
         this.mDatas = datas;
         this.mInflater = LayoutInflater.from(mContext);
