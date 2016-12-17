@@ -6,17 +6,17 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.drawable.ColorDrawable;
 import android.support.design.widget.TabLayout;
+import android.support.v4.widget.SimpleCursorAdapter;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 项目名称：AddressSelect
@@ -27,22 +27,32 @@ import java.util.List;
  * 修改时间：2016/12/15 10:27
  * 修改备注：
  */
-public class AddressPickView extends PopupWindow implements PopupWindow.OnDismissListener, View.OnClickListener, TabLayout.OnTabSelectedListener, AddressPickAdapter.OnAddressPickItemClickListener {
+public class AddressPickView extends PopupWindow implements PopupWindow.OnDismissListener, View.OnClickListener, TabLayout.OnTabSelectedListener, AdapterView.OnItemClickListener {
     private TextView mTvCancel;
-    private TextView mTvConfirm;
-    private NoScrollViewPager mVpContent;
     private TabLayout mTbSelector;
     private View mView;
     private Activity mActivity;
-
+    private ListView mLvContent;
     //控件高度
     private int height;
 
-    private List<List<String>> mdatas;
+    private Cursor mProvinceData;
+    private Cursor mCityData;
+    private Cursor mDistrictData;
 
-    List<String> mProvinceData = new ArrayList<>();
-    List<String> mCityData = new ArrayList<>();
-    List<String> mDistrictData = new ArrayList<>();
+    private String zipCode;
+    private SimpleCursorAdapter mAdapter;
+
+    private OnPickerClickListener mListener;
+
+    //当前选中项的下标
+    private int mProvincePosition;
+    private int mCityPosition;
+    private int mDistrictPosition;
+
+    public void setOnPickerClickListener(OnPickerClickListener listener) {
+        this.mListener = listener;
+    }
 
     public AddressPickView(Activity activity) {
         this.mActivity = activity;
@@ -50,7 +60,7 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
             height = getScreenH(mActivity) / 2;
         }
         initPicker();
-        initData();
+        createLocalDataBase();
         initView();
     }
 
@@ -71,18 +81,6 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         this.setBackgroundDrawable(dw);
     }
 
-    private void initData() {
-        createLocalDataBase();
-        mdatas = new ArrayList<>();
-        mdatas.add(mProvinceData);
-        mdatas.add(mCityData);
-        mdatas.add(mDistrictData);
-
-    }
-/*
-
-    */
-
     /**
      * 创建本地数据库
      */
@@ -91,42 +89,31 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         DBManager dbHelper = new DBManager(mActivity);
         dbHelper.openDatabase();
         dbHelper.closeDatabase();
-        mProvinceData = queryDataFromLocal("select distinct(shortname) from city where level=1", "shortname");
-       /* try {
-            dbHelper.createDataBase();
-            mDataBase = dbHelper.getWritableDatabase();
-            mProvinceData =
-            //查询出所有省 select distinct(shortname) from city where level=1
-            //查询出对应市 select * from city where pid in(select distinct(id) from city where shortname='湖南' and level=1);
-            //查询出对应区  select distinct(name) from city where pid= (select distinct(id) from city where shortname ='北京' and level=2)
-            //查询出对应邮编 select  distinct(zip_code) from city where name ='赫山区' and level=3;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
     }
 
-    private List<String> queryDataFromLocal(String statement, String column) {
+    private Cursor queryDataFromLocal(String statement) {
         SQLiteDatabase database = SQLiteDatabase.openOrCreateDatabase(DBManager.DB_PATH + "/" + DBManager.DB_NAME, null);
-        List<String> datas = new ArrayList<>();
         Cursor cursor = database.rawQuery(statement, null);
-        while (cursor.moveToNext()) {
-            datas.add(cursor.getString(cursor.getColumnIndex(column)));
-        }
-        database.close();
-        return datas;
+        return cursor;
     }
 
     private void initView() {
         mTvCancel = (TextView) mView.findViewById(R.id.tv_cancel);
-        mTvConfirm = (TextView) mView.findViewById(R.id.tv_confirm);
-        mVpContent = (NoScrollViewPager) mView.findViewById(R.id.vp_content);
+        mLvContent = (ListView) mView.findViewById(R.id.lv_content);
         mTbSelector = (TabLayout) mView.findViewById(R.id.tb_selector);
 
         mTvCancel.setOnClickListener(this);
-        mTvConfirm.setOnClickListener(this);
         mTbSelector.setOnTabSelectedListener(this);
-        mVpContent.setAdapter(new AddressPickAdapter(mActivity.getApplicationContext(), mdatas, this));
+        mLvContent.setOnItemClickListener(this);
+        setOnDismissListener(this);
+
+        mProvinceData = queryDataFromLocal("select distinct(shortname) as _id from city where level=1");
+        mAdapter = new SimpleCursorAdapter(mActivity, R.layout.list_item_city, mProvinceData,
+                new String[]{"_id"}, new int[]{R.id.textview}, SimpleCursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
+        mLvContent.setAdapter(mAdapter);
+
         mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
+        mTbSelector.getTabAt(0).select();
     }
 
 
@@ -135,7 +122,6 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         lp.alpha = 0.7f;
         mActivity.getWindow().setAttributes(lp);
         showAtLocation(view, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0);
-        setOnDismissListener(this);
     }
 
 
@@ -156,25 +142,29 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         int viewId = view.getId();
         if (viewId == R.id.tv_cancel) {
             dismiss();
-        } else if (viewId == R.id.tv_confirm) {
-            dismiss();
         }
-
     }
 
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
+        Cursor mData = null;
+        int currentPosition = 0;
         switch (tab.getPosition()) {
             case 0:
-                mVpContent.setCurrentItem(0, false);
+                mData = mProvinceData;
+                currentPosition = mProvincePosition;
                 break;
             case 1:
-                mVpContent.setCurrentItem(1, false);
+                mData = mCityData;
+                currentPosition = mCityPosition;
                 break;
             case 2:
-                mVpContent.setCurrentItem(2, false);
+                mData = mDistrictData;
+                currentPosition = mDistrictPosition;
                 break;
         }
+        mAdapter.swapCursor(mData);
+        mLvContent.setSelection(currentPosition);
     }
 
     @Override
@@ -187,35 +177,60 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
 
     }
 
+    private String first;
+    private String second;
+    private String third;
+
     @Override
-    public void onItemClick(int position, String data) {
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        Cursor cursor = (Cursor) mAdapter.getItem(position);
+        cursor.moveToPosition(position);
+        String data = cursor.getString(cursor.getColumnIndex("_id"));
+        int currentPosition = mTbSelector.getSelectedTabPosition();
+
         mTbSelector.removeAllTabs();
-        switch (position) {
+        Cursor mData = null;
+        switch (currentPosition) {
             case 0:
-                firsrt = data;
-                mTbSelector.addTab(mTbSelector.newTab().setText(firsrt));
+                mProvincePosition = position;
+                mCityData = queryDataFromLocal("select distinct(name) as _id from city where pid in(select distinct(id) from city where shortname='" + data + "' and level=1)");
+                mData = mCityData;
+                first = data;
+                mTbSelector.addTab(mTbSelector.newTab().setText(first));
                 mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
                 mTbSelector.getTabAt(1).select();
                 break;
             case 1:
+                mCityPosition = position;
+                mDistrictData = queryDataFromLocal("select distinct(name) as _id from city where pid= (select distinct(id) from city where name ='" + data + "'  and level=2)");
+                mData = mDistrictData;
                 second = data;
-                mTbSelector.addTab(mTbSelector.newTab().setText(firsrt));
+                mTbSelector.addTab(mTbSelector.newTab().setText(first));
                 mTbSelector.addTab(mTbSelector.newTab().setText(second));
                 mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
                 mTbSelector.getTabAt(2).select();
                 break;
             case 2:
+                mDistrictPosition = position;
+                mData = mDistrictData;
+                Cursor cursor1 = queryDataFromLocal("select distinct(zip_code) as _id from city where name ='" + data + "' and level=3");
+                cursor1.moveToFirst();
+                zipCode = cursor1.getString(cursor1.getColumnIndex("_id"));
                 third = data;
-                mTbSelector.addTab(mTbSelector.newTab().setText(firsrt));
+                mTbSelector.addTab(mTbSelector.newTab().setText(first));
                 mTbSelector.addTab(mTbSelector.newTab().setText(second));
                 mTbSelector.addTab(mTbSelector.newTab().setText(third));
                 mTbSelector.getTabAt(2).select();
+                if (mListener != null) {
+                    mListener.onPickerClick(first + second + third, zipCode);
+                }
+                dismiss();
                 break;
         }
-//        Toast.makeText(mActivity, "currentPosition:" + position + ",data:" + data, Toast.LENGTH_SHORT).show();
+        mAdapter.swapCursor(mData);
     }
 
-    private String firsrt;
-    private String second;
-    private String third;
+    public interface OnPickerClickListener {
+        void onPickerClick(String selectData, String zipCode);
+    }
 }

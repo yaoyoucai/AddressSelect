@@ -8,9 +8,9 @@ import android.widget.TextView;
 import shbd.addresspickerview.AddressPickView;
 
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, AddressPickView.OnPickerClickListener {
     private TextView mTextView;
-
+    AddressPickView addressPickView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,12 +18,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         mTextView = (TextView) findViewById(R.id.textview);
         mTextView.setOnClickListener(this);
+        addressPickView = new AddressPickView(this);
+        addressPickView.setOnPickerClickListener(this);
 
     }
 
     @Override
     public void onClick(View view) {
-        AddressPickView addressPickView = new AddressPickView(this);
         addressPickView.show(mTextView);
+    }
+
+    @Override
+    public void onPickerClick(String selectData, String zipCode) {
+        mTextView.setText(selectData + ":" + zipCode);
     }
 }
