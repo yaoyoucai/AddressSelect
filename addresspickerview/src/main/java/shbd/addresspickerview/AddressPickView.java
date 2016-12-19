@@ -40,7 +40,6 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
     private Cursor mCityData;
     private Cursor mDistrictData;
 
-    private String zipCode;
     private SimpleCursorAdapter mAdapter;
 
     private OnPickerClickListener mListener;
@@ -177,9 +176,9 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
 
     }
 
-    private String first;
-    private String second;
-    private String third;
+    private String first = "";
+    private String second = "";
+    private String third = "";
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -193,41 +192,68 @@ public class AddressPickView extends PopupWindow implements PopupWindow.OnDismis
         switch (currentPosition) {
             case 0:
                 mProvincePosition = position;
-                mCityData = queryDataFromLocal("select distinct(name) as _id from city where pid in(select distinct(id) from city where shortname='" + data + "' and level=1)");
-                mData = mCityData;
                 first = data;
+                mCityData = queryDataFromLocal("select distinct(name) as _id from city where pid in(select distinct(id) from city where shortname='" + data + "' and level=1)");
                 mTbSelector.addTab(mTbSelector.newTab().setText(first));
-                mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
-                mTbSelector.getTabAt(1).select();
+                if (mCityData.moveToFirst()) {
+                    mData = mCityData;
+                    mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
+                    mTbSelector.getTabAt(1).select();
+                } else {
+                    second = "";
+                    third = "";
+                    mData = mProvinceData;
+                    mTbSelector.getTabAt(0).select();
+                    queryZipCode(data);
+                }
+
                 break;
             case 1:
                 mCityPosition = position;
+                second = data;
                 mDistrictData = queryDataFromLocal("select distinct(name) as _id from city where pid= (select distinct(id) from city where name ='" + data + "'  and level=2)");
                 mData = mDistrictData;
-                second = data;
                 mTbSelector.addTab(mTbSelector.newTab().setText(first));
                 mTbSelector.addTab(mTbSelector.newTab().setText(second));
-                mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
-                mTbSelector.getTabAt(2).select();
+                if (mDistrictData.moveToFirst()) {
+                    mData = mDistrictData;
+                    mTbSelector.addTab(mTbSelector.newTab().setText("请选择"));
+                    mTbSelector.getTabAt(2).select();
+                } else {
+                    third = "";
+                    mData = mCityData;
+                    mTbSelector.getTabAt(1).select();
+                    queryZipCode(data);
+                }
                 break;
             case 2:
                 mDistrictPosition = position;
                 mData = mDistrictData;
-                Cursor cursor1 = queryDataFromLocal("select distinct(zip_code) as _id from city where name ='" + data + "' and level=3");
-                cursor1.moveToFirst();
-                zipCode = cursor1.getString(cursor1.getColumnIndex("_id"));
                 third = data;
                 mTbSelector.addTab(mTbSelector.newTab().setText(first));
                 mTbSelector.addTab(mTbSelector.newTab().setText(second));
                 mTbSelector.addTab(mTbSelector.newTab().setText(third));
                 mTbSelector.getTabAt(2).select();
-                if (mListener != null) {
-                    mListener.onPickerClick(first + second + third, zipCode);
-                }
-                dismiss();
+                queryZipCode(data);
                 break;
         }
         mAdapter.swapCursor(mData);
+    }
+
+    /**
+     * 查询邮编
+     *
+     * @param name
+     * @return
+     */
+    private void queryZipCode(String name) {
+        Cursor cursor = queryDataFromLocal("select distinct(zip_code) as _id from city where name ='" + name + "'");
+        cursor.moveToFirst();
+        String zipCode = cursor.getString(cursor.getColumnIndex("_id"));
+        if (mListener != null) {
+            mListener.onPickerClick(first + second + third, zipCode);
+        }
+        dismiss();
     }
 
     public interface OnPickerClickListener {
